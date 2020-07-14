@@ -1,0 +1,44 @@
+### 1. stage: create build image
+FROM alpine AS build
+
+ENV BUILD_PREFIX /usr/local/src
+
+# Install build dependencies
+RUN apk update  && apk add alpine-sdk libevent-dev openssl-dev sqlite-dev linux-headers sqlite
+
+# Clone Coturn
+WORKDIR ${BUILD_PREFIX}
+RUN git clone https://github.com/coturn/coturn.git
+
+# Build Coturn
+WORKDIR coturn
+COPY ./src ./src
+RUN ./configure && make -j8
+
+FROM alpine
+
+ENV INSTALL_PREFIX /usr/local
+ENV BUILD_PREFIX /usr/local/src
+ENV TURNSERVER_GROUP turnserver
+ENV TURNSERVER_USER turnserver
+
+COPY --from=build ${BUILD_PREFIX}/coturn/bin/ ${INSTALL_PREFIX}/bin/
+COPY --from=build ${BUILD_PREFIX}/coturn/man/ ${INSTALL_PREFIX}/man/
+COPY --from=build ${BUILD_PREFIX}/coturn/turndb/ ${INSTALL_PREFIX}/turndb/
+COPY --from=build ${BUILD_PREFIX}/coturn/sqlite/turndb ${INSTALL_PREFIX}/var/db/turndb
+
+# Run post-installation scripts
+RUN apk update && apk add libevent openssl sqlite sqlite-libs
+
+# set startup parameters
+# SUTN/TURN PORTS
+EXPOSE 3478 3478
+EXPOSE 3479 3479
+EXPOSE 5349 5349
+EXPOSE 5350 5350
+# CLI
+EXPOSE 5766
+# Relay Ports
+EXPOSE 49152-65535 49152-65535/udp
+
+CMD ${INSTALL_PREFIX}/bin/turnserver -c ${INSTALL_PREFIX}/etc/turnserver.conf

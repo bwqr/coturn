@@ -563,7 +563,8 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 			int sarlen = stun_attr_get_len(sar);
 			switch(sarlen) {
 			case SHA1SIZEBYTES:
-				hmac_len = SHA1SIZEBYTES;
+				// We have converted sha1 to sha256 for password.
+				hmac_len = SHA256SIZEBYTES;
 				break;
 			case SHA256SIZEBYTES:
 			case SHA384SIZEBYTES:
@@ -577,7 +578,7 @@ int get_user_key(int in_oauth, int *out_oauth, int *max_session_time, uint8_t *u
 				const char* secret = get_secrets_list_elem(&sl,sll);
 
 				if(secret) {
-					if(stun_calculate_hmac(usname, strlen((char*)usname), (const uint8_t*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_DEFAULT)>=0) {
+					if(stun_calculate_hmac(usname, strlen((char*)usname), (const uint8_t*)secret, strlen(secret), hmac, &hmac_len, SHATYPE_SHA256)>=0) {
 						size_t pwd_length = 0;
 						char *pwd = base64_encode(hmac,hmac_len,&pwd_length);
 
